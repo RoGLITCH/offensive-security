@@ -28,8 +28,8 @@ def download_ftp_dir(ftp, remote_dir, local_dir):
             # Get and store file information
             permissions, uid, gid = get_file_info(ftp, item)
             if 'x' in permissions:
-                write_to_file('ftp/Executable_Files.txt', f"{remote_dir}/{item}")
-            write_to_file('ftp/UID_GID.txt', f"{remote_dir}/{item}: UID={uid}, GID={gid}")
+                write_to_file(f'{args.output_path}/Executable_Files.txt', f"{remote_dir}/{item}")
+            write_to_file(f'{args.output_path}/UID_GID.txt', f"{remote_dir}/{item}: UID={uid}, GID={gid}")
 
 def is_directory(ftp, name):
     """
@@ -80,15 +80,15 @@ parser.add_argument("-target")
 parser.add_argument("-port", default=21)
 parser.add_argument("-user", default="anonymous")
 parser.add_argument("-passwd", default="")
-parser.add_argument("-output-path", default='ftp/content')
+parser.add_argument("-output-path", default='ftp')
 args = parser.parse_args()
 
 # Initialize and create necessary output files
-os.makedirs('ftp', exist_ok=True)
-open('ftp/UID_GID.txt', 'w').close()
-open('ftp/Can_Upload.txt', 'w').close()
-open('ftp/Executable_Files.txt', 'w').close()
-open('ftp/Writable_Folders.txt', 'w').close()
+os.makedirs(args.output_path, exist_ok=True)
+open(f'{args.output_path}/UID_GID.txt', 'w').close()
+open(f'{args.output_path}/Can_Upload.txt', 'w').close()
+open(f'{args.output_path}/Executable_Files.txt', 'w').close()
+open(f'{args.output_path}/Writable_Folders.txt', 'w').close()
 
 # Connect to FTP server
 ftp = FTP()
@@ -103,9 +103,9 @@ except Exception as e:
 
 # Check upload capability
 if can_upload(ftp):
-    write_to_file('ftp/Can_Upload.txt', 'YES - Can upload files')
+    write_to_file(f'{args.output_path}/Can_Upload.txt', 'YES - Can upload files')
 else:
-    write_to_file('ftp/Can_Upload.txt', 'NO - Cannot upload files')
+    write_to_file(f'{args.output_path}/Can_Upload.txt', 'NO - Cannot upload files')
 
 # Start downloading from the root directory
 download_ftp_dir(ftp, '/', args.output_path)
