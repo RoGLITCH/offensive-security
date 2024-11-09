@@ -48,12 +48,12 @@ def crawl_page(url, output_path):
     checked_dirs = set()
     for link in links:
         href = link['src']
-        if "http://" not in href:
+        if href and not href.isspace() and "http://" not in href and "https://" not in href:
             dir_url = urljoin(url, href)
             dir_path = os.path.dirname(dir_url)
-            if dir_path not in targets:
+            if dir_path and dir_path not in targets:
                 targets.append(dir_path)
-            if dir_path not in checked_dirs:
+            if dir_path and dir_path not in checked_dirs:
                 dir_response = requests.get(dir_path)
                 if dir_response.status_code == 200 and "Index of" in dir_response.text:
                     print(f"[+] Directory listing enabled at {dir_path}")
@@ -65,12 +65,12 @@ def crawl_page(url, output_path):
     links = soup.find_all("link", href=True)
     for link in links:
         href = link['href']
-        if "http://" not in href:
+        if href and not href.isspace() and "http://" not in href and "https://" not in href:
             dir_url = urljoin(url, href)
             dir_path = os.path.dirname(dir_url)
-            if dir_path not in targets:
+            if dir_path and dir_path not in targets:
                 targets.append(dir_path)
-            if dir_path not in checked_dirs:
+            if dir_path and dir_path not in checked_dirs:
                 dir_response = requests.get(dir_path)
                 if dir_response.status_code == 200 and "Index of" in dir_response.text:
                     print(f"[+] Directory listing enabled at {dir_path}")
@@ -82,12 +82,12 @@ def crawl_page(url, output_path):
     links = soup.find_all("img", src=True)
     for link in links:
         href = link['src']
-        if "http://" not in href:
+        if href and not href.isspace() and "http://" not in href and "https://" not in href:
             dir_url = urljoin(url, href)
             dir_path = os.path.dirname(dir_url)
-            if dir_path not in targets:
+            if dir_path and dir_path not in targets:
                 targets.append(dir_path)
-            if dir_path not in checked_dirs:
+            if dir_path and dir_path not in checked_dirs:
                 dir_response = requests.get(dir_path)
                 if dir_response.status_code == 200 and "Index of" in dir_response.text:
                     print(f"[+] Directory listing enabled at {dir_path}")
@@ -99,12 +99,12 @@ def crawl_page(url, output_path):
     links = soup.find_all("a", href=True)
     for link in links:
         href = link['href']
-        if "http://" not in href:
+        if href and not href.isspace() and "http://" not in href and "https://" not in href:
             dir_url = urljoin(url, href)
             dir_path = os.path.dirname(dir_url)
-            if dir_path not in targets:
+            if dir_path and dir_path not in targets:
                 targets.append(dir_path)
-            if dir_path not in checked_dirs:
+            if dir_path and dir_path not in checked_dirs:
                 dir_response = requests.get(dir_path)
                 if dir_response.status_code == 200 and "Index of" in dir_response.text:
                     print(f"[+] Directory listing enabled at {dir_path}")
@@ -248,7 +248,7 @@ def main():
     parser.add_argument("-ffuf-wordlist", help="Wordlist for FFUF subdomain enumeration")
     parser.add_argument("-dirsearch-wordlist", help="Wordlist for Dirsearch directory discovery")
     parser.add_argument("-threads", type=int, default=128, help="Number of threads for FFUF and Dirsearch (default: 128)")
-    parser.add_argument("-exclude-status", help="Status codes to exclude in Dirsearch, e.g., 403,404", default="403,404")
+    parser.add_argument("-exclude-status", help="Status codes to exclude in Dirsearch, e.g., 403,404", default="400,403,404")
     
     args = parser.parse_args()
 
