@@ -1,3 +1,9 @@
+"""
+Author: GLITCH
+
+A simple python script to automate the enumeration of ftp servers and check details that I might miss sometimes like writeable directories
+"""
+
 import os
 import sys
 import argparse
