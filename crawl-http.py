@@ -8,6 +8,9 @@ from bs4 import BeautifulSoup, Comment
 from urllib.parse import urljoin
 import socket
 
+targets = []
+
+
 def is_ip(target):
     try:
         socket.inet_aton(target)
@@ -30,24 +33,77 @@ def crawl_page(url, output_path):
     
     # Hidden elements
     hidden_elements = soup.find_all(style=re.compile(r"display\s*:\s*none"))
-    with open(os.path.join(output_path, "hidden_elements.txt"), "w") as f:
+    with open(os.path.join(output_path, "hidden_elements.txt"), "a") as f:
         for element in hidden_elements:
             f.write(f"Found hidden element: {element}\n")
     
     # Comments
     comments = soup.find_all(string=lambda text: isinstance(text, Comment))
-    with open(os.path.join(output_path, "comments.txt"), "w") as f:
+    with open(os.path.join(output_path, "comments.txt"), "a") as f:
         for comment in comments:
             f.write(f"Found comment: {comment}\n")
 
-    # Directory listing check
-    links = soup.find_all("a", href=True)
+    # Directory listing check (<script> tag)
+    links = soup.find_all("script", src=True)
     checked_dirs = set()
     for link in links:
-        href = link['href']
-        if href.startswith('/'):
+        href = link['src']
+        if "http://" not in href:
             dir_url = urljoin(url, href)
             dir_path = os.path.dirname(dir_url)
+            if dir_path not in targets:
+                targets.append(dir_path)
+            if dir_path not in checked_dirs:
+                dir_response = requests.get(dir_path)
+                if dir_response.status_code == 200 and "Index of" in dir_response.text:
+                    print(f"[+] Directory listing enabled at {dir_path}")
+                    with open(os.path.join(output_path, "directory_listing.txt"), "a") as f:
+                        f.write(f"Directory listing enabled at: {dir_path}\n")
+                checked_dirs.add(dir_path)
+
+    # Directory listing check (<link> tag)
+    links = soup.find_all("link", href=True)
+    for link in links:
+        href = link['href']
+        if "http://" not in href:
+            dir_url = urljoin(url, href)
+            dir_path = os.path.dirname(dir_url)
+            if dir_path not in targets:
+                targets.append(dir_path)
+            if dir_path not in checked_dirs:
+                dir_response = requests.get(dir_path)
+                if dir_response.status_code == 200 and "Index of" in dir_response.text:
+                    print(f"[+] Directory listing enabled at {dir_path}")
+                    with open(os.path.join(output_path, "directory_listing.txt"), "a") as f:
+                        f.write(f"Directory listing enabled at: {dir_path}\n")
+                checked_dirs.add(dir_path)
+
+    # Directory listing check (<img> tag)
+    links = soup.find_all("img", src=True)
+    for link in links:
+        href = link['src']
+        if "http://" not in href:
+            dir_url = urljoin(url, href)
+            dir_path = os.path.dirname(dir_url)
+            if dir_path not in targets:
+                targets.append(dir_path)
+            if dir_path not in checked_dirs:
+                dir_response = requests.get(dir_path)
+                if dir_response.status_code == 200 and "Index of" in dir_response.text:
+                    print(f"[+] Directory listing enabled at {dir_path}")
+                    with open(os.path.join(output_path, "directory_listing.txt"), "a") as f:
+                        f.write(f"Directory listing enabled at: {dir_path}\n")
+                checked_dirs.add(dir_path)
+
+    # Directory listing check (<a> tag)
+    links = soup.find_all("a", href=True)
+    for link in links:
+        href = link['href']
+        if "http://" not in href:
+            dir_url = urljoin(url, href)
+            dir_path = os.path.dirname(dir_url)
+            if dir_path not in targets:
+                targets.append(dir_path)
             if dir_path not in checked_dirs:
                 dir_response = requests.get(dir_path)
                 if dir_response.status_code == 200 and "Index of" in dir_response.text:
@@ -122,7 +178,7 @@ def run_ffuf(target, output_path, wordlist, threads):
         if subdomain:
             subdomains.append(subdomain)
 
-    file = open("crawled-http/subdomains.txt", 'w')
+    file = open("crawled-http/subdomains.txt", 'a')
     for subdomain in subdomains:
         file.write(f"Found {subdomain}\n")
 
@@ -138,7 +194,7 @@ def run_dirsearch(target, port, output_path, wordlist, threads, exclude_status):
             "-e", "html,md,txt,php,bak",
             "-f",
             "-r",
-            "-o", os.path.join(output_path, f"directories_found.txt"),
+            "-o", os.path.join(output_path, f"dirsearch.txt"),
             "--recursion-status=200,403",
             "-t", str(threads),
             f"--exclude-status={exclude_status}"
@@ -149,7 +205,7 @@ def run_dirsearch(target, port, output_path, wordlist, threads, exclude_status):
             "-e", "html,md,txt,php,bak",
             "-f",
             "-r",
-            "-o", os.path.join(output_path, f"directories_found.txt"),
+            "-o", os.path.join(output_path, f"dirsearch.txt"),
             "--recursion-status=200,403",
             "-t", str(threads)
         ]
@@ -162,10 +218,11 @@ def run_dirsearch(target, port, output_path, wordlist, threads, exclude_status):
 
 def test_path_traversal(target, output_path):
     print("[*] Testing for path traversal vulnerabilities...")
-    traversal_attempts = ["/" + "../" * i + "etc/passwd" for i in range(1, 8)]
-    with open(os.path.join(output_path, "path_traversal.txt"), "w") as f:
+    traversal_attempts = ["../" * i + "etc/passwd" for i in range(1, 8)]
+    traversal_attempts
+    with open(os.path.join(output_path, "path_traversal.txt"), "a") as f:
         for attempt in traversal_attempts:
-            traversal_url = f"http://{target}{attempt}"
+            traversal_url = f"{target}{attempt}"
             response = subprocess.run(
                 ["curl", "--path-as-is", traversal_url],
                 capture_output=True, text=True
@@ -173,17 +230,24 @@ def test_path_traversal(target, output_path):
             if "root:" in response.stdout:
                 f.write(f"[+] Potential path traversal found at: {traversal_url}\n")
                 print(f"[+] Potential path traversal found at: {traversal_url}")
-            else:
-                f.write(f"[-] No path traversal at: {traversal_url}\n")
+
+            traversal_url_2 = f"{target}/{attempt}"
+            response = subprocess.run(
+                ["curl", "--path-as-is", traversal_url_2],
+                capture_output=True, text=True
+            )
+            if "root:" in response.stdout:
+                f.write(f"[+] Potential path traversal found at: {traversal_url_2}\n")
+                print(f"[+] Potential path traversal found at: {traversal_url_2}")
 
 def main():
     parser = argparse.ArgumentParser(description="Web Crawler with Pentesting Enhancements")
     parser.add_argument("-target", required=True, help="Target URL (e.g., http://example.com or IP address)")
-    parser.add_argument("-output-path", required=True, help="Path to save output files")
+    parser.add_argument("-output-path", default="", help="Path to save output files (default '')")
     parser.add_argument("-port", default=80, type=int, help="Port of the target (default: 80)")
     parser.add_argument("-ffuf-wordlist", help="Wordlist for FFUF subdomain enumeration")
     parser.add_argument("-dirsearch-wordlist", help="Wordlist for Dirsearch directory discovery")
-    parser.add_argument("-threads", type=int, default=128, help="Number of threads for FFUF and Dirsearch (default: 10)")
+    parser.add_argument("-threads", type=int, default=128, help="Number of threads for FFUF and Dirsearch (default: 128)")
     parser.add_argument("-exclude-status", help="Status codes to exclude in Dirsearch, e.g., 403,404", default="403,404")
     
     args = parser.parse_args()
@@ -192,12 +256,20 @@ def main():
     os.makedirs(output_path, exist_ok=True)
 
     target_url = f"http://{args.target}:{args.port}" if args.port != 80 else f"http://{args.target}"
+    targets.append(target_url)
 
     check_robots_sitemap(target_url, output_path)
-    test_path_traversal(args.target, output_path)
-    crawl_page(target_url, output_path)
-
     run_ffuf(args.target, output_path, args.ffuf_wordlist, args.threads)
+
+    for target in targets:
+        test_path_traversal(target, output_path)
+        crawl_page(target, output_path)
+
+    file = open(os.path.join(output_path, "directories_found.txt"), "a")
+    for target in targets:
+        file.write(f"{target}\n")
+    file.close()
+
     run_dirsearch(args.target, args.port, output_path, args.dirsearch_wordlist, args.threads, args.exclude_status)
 
 if __name__ == "__main__":
