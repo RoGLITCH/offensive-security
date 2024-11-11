@@ -18,10 +18,15 @@ def download_ftp_dir(ftp, remote_dir, local_dir):
     ftp.cwd(remote_dir)
     file_list = ftp.nlst()
 
+    print(file_list)
+
     for item in file_list:
         # Check if item is a directory or file
         if is_directory(ftp, item):
             # Recursively download the directory
+            if "." == item or ".." == item:
+                continue
+
             download_ftp_dir(ftp, item, os.path.join(local_dir, item))
             ftp.cwd('..')
         else:
@@ -115,6 +120,12 @@ else:
 
 # Start downloading from the root directory
 download_ftp_dir(ftp, '/', args.output_path)
+
+with open("ftp_list_of_files.txt", 'w') as file:
+    listing = ftp.nlst('-a')
+    
+    for item in listing:
+        file.write(f"{item}\n")
 
 # Close the FTP connection
 ftp.quit()
