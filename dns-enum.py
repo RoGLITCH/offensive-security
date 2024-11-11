@@ -37,9 +37,8 @@ def extract_subdomains(domain, dig_output):
 
     # Find all matching subdomains (both NS and SOA)
     for line in dig_output.split():
-        subdomain_list = regex.findall(line)
+        l.extend(regex.findall(line))
 
-        l.extend(subdomain_list)
     return l
 
 def enumerate_dns_records(domain, dns_server, output_path):
@@ -126,20 +125,21 @@ def main():
     # CALL dnsenum ON ALL DOMAINS FOUND
     print("Starting bruteforcing, please be patient this might take some time")
     for domain in universal_subdomains:
-        command = ["dnsenum", "--enum", "--dnsserver", args.target, "-p", "0", "-s", "0", "-f", args.wordlist, domain]
+        command = ["dnsenum", "--enum", "--dnsserver", args.target, "-p", "0", "-s", "0", "-f", args.wordlist, domain, "--threads", "128"]
         try:
-            output = subprocess.check_output(command, stderr=subprocess.STDOUT, universal_newlines=True)
+            output = subprocess.check_output(command, stderr=subprocess.STDOUT, text=True)
         except Exception as e:
             print(f"Skipping {domain} (not viable)")
             continue
         subdomains = extract_subdomains(domain, output)
         if subdomains:
-            domain = subdomains[0]
 
-            if domain.startswith("0m"):
-                domain = domain[2:]
-            if domain not in bruted_subdomains:
-                bruted_subdomains.append(domain)
+            for domain in subdomains:
+                if domain.startswith("0m"):
+                    domain = domain[2:]
+
+                if domain not in bruted_subdomains:
+                    bruted_subdomains.append(domain)
 
     # OUTPUT ALL NEWLY FOUND SUBDOMAINS 
     with open("subdomains.txt", 'a') as file:
