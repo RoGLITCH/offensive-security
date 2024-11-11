@@ -98,7 +98,7 @@ open(f'{args.output_path}/Writable_Folders.txt', 'w').close()
 
 # Connect to FTP server
 ftp = FTP()
-ftp.connect(args.target, args.port)
+ftp.connect(args.target, int(args.port))
 
 try:
     ftp.login(args.user, args.passwd)
