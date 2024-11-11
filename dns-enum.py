@@ -5,6 +5,7 @@ import argparse
 
 
 universal_subdomains = []
+bruted_subdomains = []
 
 
 def create_folder(path):
@@ -39,7 +40,6 @@ def extract_subdomains(domain, dig_output):
         subdomain_list = regex.findall(line)
 
         l.extend(subdomain_list)
-    
     return l
 
 def enumerate_dns_records(domain, dns_server, output_path):
@@ -123,8 +123,41 @@ def main():
         for subdomain in universal_subdomains:
             file.write(subdomain + '\n')
 
-# CALL dnsenum ON ALL DOMAINS FOUND, OUTPUT THEM TO bruted-domains.txt FILE OR WHATEVER
-#    for domain in universal_subdomains
+    # CALL dnsenum ON ALL DOMAINS FOUND
+    print("Starting bruteforcing, please be patient this might take some time")
+    for domain in universal_subdomains:
+        command = ["dnsenum", "--enum", "--dnsserver", args.target, "-p", "0", "-s", "0", "-f", args.wordlist, domain]
+        try:
+            output = subprocess.check_output(command, stderr=subprocess.STDOUT, universal_newlines=True)
+        except Exception as e:
+            print(f"Skipping {domain} (not viable)")
+            continue
+        subdomains = extract_subdomains(domain, output)
+        if subdomains:
+            domain = subdomains[0]
+
+            if domain.startswith("0m"):
+                domain = domain[2:]
+            if domain not in bruted_subdomains:
+                bruted_subdomains.append(domain)
+
+    # OUTPUT ALL NEWLY FOUND SUBDOMAINS 
+    with open("subdomains.txt", 'a') as file:
+        file.write("=======================================\n")
+        for domain in bruted_subdomains:
+            if domain not in universal_subdomains:
+                file.write(f"{domain}\n")
+            else:
+                print(f"{domain} already exists at universal")
+
+        file.write("=======================================\n")
+
+    # RE-ENUMERATE ALL NEWLY FOUND SUBDOMAINS
+    print("Re-Enumerating Found Subdomains")
+    for domain in bruted_subdomains:
+        if domain not in universal_subdomains:
+            enumerate_dns_records(domain, args.target, output_path)
+
     print("[INFO] DNS enumeration completed.")
 
 if __name__ == "__main__":
